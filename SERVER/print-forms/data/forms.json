@@ -1,0 +1,71 @@
+[
+  {
+    "id": "1703123456789",
+    "name": "Акт выполненных работ",
+    "description": "Стандартная форма акта выполненных работ",
+    "template": "<html><body><h1>Акт выполненных работ №{number}</h1><p>Дата: {date}</p><p>Исполнитель: {performer}</p><p>Заказчик: {customer}</p><p>Описание работ: {description}</p><p>Сумма: {amount} руб.</p></body></html>",
+    "fields": [
+      {
+        "id": "1",
+        "name": "number",
+        "type": "text",
+        "label": "Номер акта",
+        "required": true,
+        "placeholder": "Введите номер акта"
+      },
+      {
+        "id": "2",
+        "name": "date",
+        "type": "date",
+        "label": "Дата",
+        "required": true,
+        "placeholder": ""
+      },
+      {
+        "id": "3",
+        "name": "performer",
+        "type": "text",
+        "label": "Исполнитель",
+        "required": true,
+        "placeholder": "ФИО исполнителя"
+      },
+      {
+        "id": "4",
+        "name": "customer",
+        "type": "text",
+        "label": "Заказчик",
+        "required": true,
+        "placeholder": "ФИО заказчика"
+      },
+      {
+        "id": "5",
+        "name": "description",
+        "type": "textarea",
+        "label": "Описание работ",
+        "required": true,
+        "placeholder": "Подробное описание выполненных работ"
+      },
+      {
+        "id": "6",
+        "name": "amount",
+        "type": "number",
+        "label": "Сумма (руб.)",
+        "required": true,
+        "placeholder": "0"
+      }
+    ],
+    "settings": {
+      "pageSize": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 20,
+        "right": 20,
+        "bottom": 20,
+        "left": 20
+      }
+    },
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z",
+    "createdBy": "admin"
+  }
+]

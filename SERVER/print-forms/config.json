@@ -1,0 +1,50 @@
+{
+  "name": "print-forms",
+  "title": "Печатные формы",
+  "description": "Управление печатными формами и экспорт данных в документы",
+  "version": "1.0.0",
+  "permissions": ["editor", "admin"],
+  "order": 2,
+  "routes": [
+    {
+      "path": "/forms",
+      "method": "GET",
+      "description": "Получение списка печатных форм"
+    },
+    {
+      "path": "/forms/:id",
+      "method": "GET", 
+      "description": "Получение печатной формы по ID"
+    },
+    {
+      "path": "/forms",
+      "method": "POST",
+      "description": "Создание новой печатной формы"
+    },
+    {
+      "path": "/forms/:id",
+      "method": "PUT",
+      "description": "Обновление печатной формы"
+    },
+    {
+      "path": "/forms/:id",
+      "method": "DELETE",
+      "description": "Удаление печатной формы"
+    },
+    {
+      "path": "/forms/:id/preview",
+      "method": "GET",
+      "description": "Предварительный просмотр формы"
+    },
+    {
+      "path": "/forms/:id/export",
+      "method": "POST",
+      "description": "Экспорт данных в документ"
+    },
+    {
+      "path": "/forms/:id/print",
+      "method": "POST",
+      "description": "Печать документа"
+    }
+  ]
+} 

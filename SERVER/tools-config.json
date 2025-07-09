@@ -1,0 +1,40 @@
+{
+  "tools": {
+    "auth": {
+      "active": true,
+      "permissions": [
+        "editor",
+        "admin",
+        "user",
+        "guest"
+      ],
+      "title": "Авторизация",
+      "description": "Система авторизации и управления пользователями",
+      "order": 1
+    },
+    "print-forms": {
+      "active": true,
+      "permissions": [
+        "editor",
+        "admin"
+      ],
+      "title": "Печатные формы",
+      "description": "Управление печатными формами и экспорт данных в документы",
+      "order": 2
+    }
+  },
+  "defaultPermissions": {
+    "guest": [
+      "auth"
+    ],
+    "user": [
+      "auth"
+    ],
+    "editor": [
+      "auth"
+    ],
+    "admin": [
+      "auth"
+    ]
+  }
+}

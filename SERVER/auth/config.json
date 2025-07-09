@@ -1,0 +1,20 @@
+{
+  "title": "Авторизация",
+  "description": "Система авторизации и управления пользователями",
+  "version": "1.0.0",
+  "permissions": ["guest"],
+  "features": {
+    "login": true,
+    "register": true,
+    "roles": ["guest", "user", "editor", "admin"],
+    "ban_system": true,
+    "file_based_storage": true
+  },
+  "endpoints": {
+    "login": "/login",
+    "register": "/register", 
+    "profile": "/profile",
+    "users": "/users",
+    "roles": "/roles"
+  }
+} 

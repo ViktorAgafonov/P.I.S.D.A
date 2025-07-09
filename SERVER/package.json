@@ -1,0 +1,13 @@
+{
+  "name": "pisda-server",
+  "version": "1.0.0",
+  "description": "Серверная часть P.I.S.D.A.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.0"
+  }
+}

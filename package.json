@@ -1,0 +1,69 @@
+{
+  "name": "pisda-hub",
+  "version": "1.0.0",
+  "description": "Проект Информационной Системы Документооборота Автоматизированной",
+  "main": "SERVER/app.js",
+  "private": true,
+  "workspaces": [
+    "SERVER",
+    "WEB"
+  ],
+  "scripts": {
+    "start": "node SERVER/app.js",
+    "dev": "nodemon SERVER/app.js",
+    "web": "npm run start --workspace=WEB",
+    "dev:all": "concurrently \"npm run dev\" \"npm run web\" --names \"🚀SERVER,📱CLIENT\" --prefix-colors \"blue,green\"",
+    "start:all": "concurrently \"npm start\" \"npm run web\" --names \"🚀SERVER,📱CLIENT\" --prefix-colors \"blue,green\"",
+    "install-all": "npm install",
+    "build": "npm run build --workspace=WEB",
+    "prod": "npm run build && npm start",
+    "test": "npm run test --workspace=WEB",
+    "clean": "rimraf node_modules SERVER/node_modules WEB/node_modules"
+  },
+  "keywords": [
+    "документооборот",
+    "hub",
+    "node.js"
+  ],
+  "author": "P.I.S.D.A. Team",
+  "license": "MIT",
+  "dependencies": {
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "docx": "^7.8.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.10.0",
+    "fs-extra": "^11.1.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.294.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
+    "postcss": "^8.4.32",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-draggable": "^4.5.0",
+    "react-grid-layout": "^1.5.2",
+    "react-hook-form": "^7.47.0",
+    "react-hot-toast": "^2.4.1",
+    "react-query": "^3.39.3",
+    "react-resizable": "^3.0.5",
+    "react-router-dom": "^6.8.1",
+    "sharp": "^0.32.6",
+    "tailwindcss": "^3.3.6",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.42",
+    "@types/react-dom": "^18.2.17",
+    "concurrently": "^9.2.0",
+    "nodemon": "^3.0.1",
+    "react-scripts": "5.0.1",
+    "rimraf": "^5.0.10"
+  }
+}

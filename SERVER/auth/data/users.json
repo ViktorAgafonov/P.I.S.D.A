@@ -1,0 +1,31 @@
+[
+  {
+    "id": "94546c84-10cd-4167-93a3-0934022d50d0",
+    "username": "admin",
+    "password": "$2a$10$aGswtvArVjWeD58r2fHnfeo4HYLuwbKtxRFLjvqmUqm1OO6ju9Veu",
+    "role": "admin",
+    "status": "active",
+    "createdAt": "2025-07-03T09:26:25.843Z",
+    "lastLogin": "2025-07-09T19:21:36.178Z"
+  },
+  {
+    "id": "14e09180-6646-4cc0-abf9-f5ecccc963a6",
+    "username": "user",
+    "password": "$2a$10$ItrgdKieUehfoyWcGkPP2.fXUj0Up/CyKqN8yfAOBIY2oLvy2hxca",
+    "role": "user",
+    "status": "active",
+    "createdAt": "2025-07-09T18:35:31.629Z",
+    "lastLogin": "2025-07-09T19:11:27.972Z",
+    "originalRole": "user"
+  },
+  {
+    "id": "062bf94b-a5e3-4c74-a56c-fab8290d2d9d",
+    "username": "editor",
+    "password": "$2a$10$a6/zGZgQwAVj2sTLO87mhePrtSOA048aJaxnY33WdPiN/W0i.uVNW",
+    "role": "editor",
+    "status": "active",
+    "createdAt": "2025-07-09T18:53:09.905Z",
+    "lastLogin": "2025-07-09T19:15:56.194Z",
+    "originalRole": "editor"
+  }
+]
