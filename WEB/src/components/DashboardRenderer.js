@@ -4,7 +4,7 @@ import { SystemInfo } from './SystemInfo';
 import { QuickActions } from './QuickActions';
 import { SystemStats } from './SystemStats';
 import { ToolsPlanner } from './ToolsPlanner';
-import { Profile } from '../auth/components/Profile';
+import Profile from '../auth/components/Profile';
 
 // Виджет последней активности
 function RecentActivityWidget() {
@@ -189,7 +189,7 @@ export function DashboardRenderer() {
   const { user, hasRole } = useAuth();
 
   // Определяем роль пользователя
-  const userRole = user?.effectiveRole || 'guest';
+  const userRole = user?.role || 'guest';
 
   // Возвращаем соответствующий дашборд для роли
   switch (userRole) {

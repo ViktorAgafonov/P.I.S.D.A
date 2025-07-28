@@ -175,7 +175,7 @@ export function AuthProvider({ children }) {
       admin: 3,
     };
 
-    const userLevel = roleHierarchy[state.user.effectiveRole] || 0;
+    const userLevel = roleHierarchy[state.user.role] || 0;
     const requiredLevel = roleHierarchy[requiredRole] || 0;
     
     return userLevel >= requiredLevel;
@@ -183,7 +183,7 @@ export function AuthProvider({ children }) {
 
   // Проверка конкретной роли
   const hasExactRole = (role) => {
-    return state.user?.effectiveRole === role;
+    return state.user?.role === role;
   };
 
   // Значения контекста

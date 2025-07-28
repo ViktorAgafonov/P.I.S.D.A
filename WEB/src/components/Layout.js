@@ -59,7 +59,7 @@ export function Layout() {
                       {user.username}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {user.effectiveRole === 'banned' ? 'Заблокирован' : user.effectiveRole}
+                      {user.role === 'banned' ? 'Заблокирован' : user.role}
                     </div>
                   </div>
                   

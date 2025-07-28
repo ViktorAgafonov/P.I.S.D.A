@@ -2,8 +2,8 @@ import React from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, UserCheck, Settings, Wrench, Grid } from 'lucide-react';
-import { UserManagement } from './components/UserManagement';
-import { Profile } from './components/Profile';
+import UserManagement from './components/UserManagement';
+import Profile from './components/Profile';
 import { ToolsManager } from '../components/ToolsManager';
 
 

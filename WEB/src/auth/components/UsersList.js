@@ -16,7 +16,7 @@ export function UsersList() {
     () => authAPI.getUsers(),
     {
       select: (response) => response.data.users,
-      enabled: user?.effectiveRole === 'admin'
+      enabled: user?.role === 'admin',
     }
   );
 
@@ -174,9 +174,9 @@ export function UsersList() {
                       </div>
 
                       <div className="flex items-center space-x-3 mt-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(userData.effectiveRole)}`}>
-                          <Shield className="w-3 h-3 mr-1" />
-                          {userData.effectiveRole}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(userData.role)}`}>
+                          <Shield size={12} className="mr-1" />
+                          {userData.role}
                         </span>
                         
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(userData.status)}`}>
@@ -236,21 +236,21 @@ export function UsersList() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {usersData.filter(u => u.effectiveRole === 'admin').length}
+              {usersData.filter(u => u.role === 'admin').length}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">Администраторы</div>
           </div>
           
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {usersData.filter(u => u.effectiveRole === 'editor').length}
+              {usersData.filter(u => u.role === 'editor').length}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">Редакторы</div>
           </div>
           
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {usersData.filter(u => u.effectiveRole === 'user').length}
+              {usersData.filter(u => u.role === 'user').length}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">Пользователи</div>
           </div>

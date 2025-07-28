@@ -20,7 +20,7 @@ export function SystemStats() {
     () => authAPI.getUsers(),
     {
       enabled: hasRole('admin'),
-      select: (response) => response.data.users,
+      select: (response) => response.data,
     }
   );
 
@@ -32,13 +32,13 @@ export function SystemStats() {
     }
   );
 
-  const { data: rolesData } = useQuery(
-    'roles-stats',
-    () => authAPI.getRoles(),
-    {
-      select: (response) => response.data.roles,
-    }
-  );
+  // Убираем запрос ролей, так как getRoles больше не существует
+  // Статические данные о ролях
+  const rolesData = {
+    admin: { title: 'Администратор', level: 3 },
+    editor: { title: 'Редактор', level: 2 },
+    user: { title: 'Пользователь', level: 1 }
+  };
 
   // Если нет прав администратора, показываем базовую статистику
   if (!hasRole('admin')) {
@@ -86,12 +86,12 @@ export function SystemStats() {
   }
 
   // Расчет статистики для администраторов
-  const totalUsers = usersData?.length || 0;
-  const activeUsers = usersData?.filter(u => u.status === 'active').length || 0;
-  const bannedUsers = usersData?.filter(u => u.status === 'banned').length || 0;
+  const totalUsers = usersData?.users?.length || 0;
+  const activeUsers = usersData?.users?.filter(u => u.profile?.employeeStatus === 'active').length || 0;
+  const dismissedUsers = usersData?.users?.filter(u => u.profile?.employeeStatus === 'dismissed').length || 0;
   
-  const roleStats = usersData?.reduce((acc, user) => {
-    acc[user.effectiveRole] = (acc[user.effectiveRole] || 0) + 1;
+  const roleStats = usersData?.users?.reduce((acc, user) => {
+    acc[user.role] = (acc[user.role] || 0) + 1;
     return acc;
   }, {}) || {};
 
@@ -104,7 +104,7 @@ export function SystemStats() {
       value: totalUsers,
       icon: Users,
       color: 'blue',
-      description: `${activeUsers} активных, ${bannedUsers} заблокированных`,
+      description: `${activeUsers} активных, ${dismissedUsers} уволенных`,
     },
     {
       name: 'Администраторы',

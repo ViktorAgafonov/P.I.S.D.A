@@ -51,7 +51,7 @@ export function ProtectedRoute({ children, requiredRole = 'user', fallbackPath =
           </p>
           
           <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-            <div>Ваша роль: <span className="font-medium">{user.effectiveRole}</span></div>
+            <div>Ваша роль: <span className="font-medium">{user.role}</span></div>
             <div>Требуется: <span className="font-medium">{requiredRole}</span></div>
           </div>
           

@@ -43,14 +43,11 @@ export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   verifyToken: () => api.get('/auth/verify'),
   getProfile: () => api.get('/auth/profile'),
-  getRoles: () => api.get('/auth/roles'),
+  updateProfile: (profileData) => api.put('/auth/profile', profileData),
   
   // Управление пользователями (админ)
   getUsers: () => api.get('/auth/users'),
   updateUser: (userId, userData) => api.put(`/auth/users/${userId}`, userData),
-  updateUserRole: (userId, role) => api.put(`/auth/users/${userId}`, { role }),
-  banUser: (userId) => api.post(`/auth/users/${userId}/ban`),
-  unbanUser: (userId) => api.post(`/auth/users/${userId}/unban`),
   deleteUser: (userId) => api.delete(`/auth/users/${userId}`),
 };
 

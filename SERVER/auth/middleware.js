@@ -35,7 +35,7 @@ const authenticateToken = async (req, res, next) => {
 
   if (!token) {
     // Если нет токена, устанавливаем гостевую роль
-    req.user = { role: 'guest', effectiveRole: 'guest' };
+    req.user = { role: 'guest' };
     console.log('👤 Установлена гостевая роль (нет токена)');
     return next();
   }
@@ -51,19 +51,16 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Пользователь не найден' });
     }
 
-    // Получаем эффективную роль (с учетом БАН)
-    const effectiveRole = UserModel.getEffectiveRole(user);
-    
+    // Просто используем роль пользователя напрямую
     req.user = {
       ...user,
-      effectiveRole
+      role: user.role
     };
     
     console.log('👤 Пользователь аутентифицирован:', { 
       id: user.id, 
       username: user.username, 
       role: user.role, 
-      effectiveRole,
       status: user.status 
     });
     
@@ -81,7 +78,7 @@ const requireRole = (requiredRoles) => {
       return res.status(401).json({ error: 'Требуется аутентификация' });
     }
 
-    const userRole = req.user.effectiveRole || 'guest';
+    const userRole = req.user.role || 'guest';
     
     // Проверяем имеет ли пользователь необходимую роль
     if (!requiredRoles.includes(userRole)) {
@@ -111,7 +108,7 @@ const requireMinRole = (minRole) => {
       return res.status(401).json({ error: 'Требуется аутентификация' });
     }
 
-    const userRole = req.user.effectiveRole || 'guest';
+    const userRole = req.user.role || 'guest';
     const userLevel = ROLE_HIERARCHY[userRole] || 0;
     const requiredLevel = ROLE_HIERARCHY[minRole] || 0;
     
@@ -150,7 +147,7 @@ const requireOwnerOrAdmin = (getUserIdFromRequest) => {
       return res.status(401).json({ error: 'Требуется аутентификация' });
     }
 
-    const userRole = req.user.effectiveRole || 'guest';
+    const userRole = req.user.role || 'guest';
     
     // Админы могут делать всё
     if (userRole === 'admin') {
@@ -188,7 +185,11 @@ const generateToken = (user) => {
 // Проверка доступа к инструменту
 const checkToolAccess = (toolName, requiredPermission = 'guest') => {
   return (req, res, next) => {
-    const userRole = (req.user && req.user.effectiveRole) || 'guest';
+    if (!req.user) {
+      return res.status(401).json({ error: 'Требуется аутентификация' });
+    }
+
+    const userRole = (req.user && req.user.role) || 'guest';
     const userLevel = ROLE_HIERARCHY[userRole] || 0;
     const requiredLevel = ROLE_HIERARCHY[requiredPermission] || 0;
     
@@ -207,7 +208,7 @@ const checkToolAccess = (toolName, requiredPermission = 'guest') => {
 // Проверка доступа к инструменту авторизации
 const checkAuthToolAccess = async (req, res, next) => {
   try {
-    const userRole = (req.user && req.user.effectiveRole) || 'guest';
+    const userRole = (req.user && req.user.role) || 'guest';
     
     // Администраторы всегда имеют доступ к инструменту авторизации
     if (userRole === 'admin') {

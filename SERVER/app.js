@@ -148,7 +148,7 @@ app.get('/api/tools', authenticateToken, async (req, res) => {
         const toolConfig = toolsConfig.tools[item] || {};
         
         // Показываем только активные инструменты (или все для админов)
-        const userRole = req.user?.effectiveRole;
+        const userRole = req.user?.role;
         const isActive = toolConfig.active !== false; // по умолчанию активен
         
         if (isActive || userRole === 'admin') {
@@ -177,8 +177,8 @@ app.get('/api/tools', authenticateToken, async (req, res) => {
 app.get('/api/tools/manage', authenticateToken, async (req, res) => {
   try {
     // Проверяем права администратора
-    if (!req.user || req.user.effectiveRole !== 'admin') {
-      return res.status(403).json({ error: 'Доступ запрещен. Требуются права администратора.' });
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Требуются права администратора' });
     }
 
     const items = await fs.readdir(toolsPath);
@@ -215,8 +215,8 @@ app.get('/api/tools/manage', authenticateToken, async (req, res) => {
 app.post('/api/tools/manage', authenticateToken, async (req, res) => {
   try {
     // Проверяем права администратора
-    if (!req.user || req.user.effectiveRole !== 'admin') {
-      return res.status(403).json({ error: 'Доступ запрещен. Требуются права администратора.' });
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Требуются права администратора' });
     }
 
     const { tools, defaultPermissions } = req.body;

@@ -11,7 +11,8 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  // Всегда перенаправляем на дашборд после логина
+  const from = '/';
 
   // Если пользователь уже авторизован, перенаправляем
   useEffect(() => {
