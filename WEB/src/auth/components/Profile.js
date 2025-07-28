@@ -1,208 +1,409 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { User, Mail, Calendar, Shield, AlertTriangle } from 'lucide-react';
+import { useMutation, useQueryClient } from 'react-query';
+import { authAPI } from '../../services/api';
+import { 
+    User, 
+    Calendar, 
+    MapPin, 
+    Building, 
+    Briefcase, 
+    Edit, 
+    Save, 
+    X,
+    AlertCircle,
+    CheckCircle
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
-export function Profile() {
-  const { user } = useAuth();
+const Profile = () => {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedProfile, setEditedProfile] = useState({});
 
-  if (!user) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">
-          Информация о профиле недоступна
-        </p>
-      </div>
+    // Мутация для обновления профиля
+    const updateProfileMutation = useMutation(
+        (profileData) => authAPI.updateProfile(profileData),
+        {
+            onSuccess: () => {
+                queryClient.invalidateQueries('authUser');
+                setIsEditing(false);
+                toast.success('Профиль успешно обновлен');
+            },
+            onError: (error) => {
+                toast.error(error.response?.data?.error || 'Ошибка обновления профиля');
+            }
+        }
     );
-  }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Никогда';
-    return new Date(dateString).toLocaleString('ru-RU');
-  };
-
-  const getRoleColor = (role) => {
-    const colors = {
-      guest: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-      user: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      editor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    const handleEditStart = () => {
+        setEditedProfile(user.profile || {});
+        setIsEditing(true);
     };
-    return colors[role] || colors.guest;
-  };
 
-  const getStatusColor = (status) => {
-    return status === 'active'
-      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-  };
+    const handleEditCancel = () => {
+        setEditedProfile({});
+        setIsEditing(false);
+    };
 
-  return (
-    <div className="space-y-6">
-      {/* Заголовок */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Мой профиль
-        </h2>
-        <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Информация о вашем аккаунте и правах доступа
-        </p>
-      </div>
+    const handleEditSave = () => {
+        updateProfileMutation.mutate({ profile: editedProfile });
+    };
 
-      {/* Основная информация */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Основная информация
-          </h3>
-        </div>
+    const handleInputChange = (field, value) => {
+        setEditedProfile(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'Не указано';
+        return new Date(dateString).toLocaleDateString('ru-RU');
+    };
+
+    const getStatusBadge = (status) => {
+        const badges = {
+            active: { 
+                class: 'bg-green-100 text-green-800 border-green-200', 
+                text: 'Активен',
+                icon: CheckCircle
+            },
+            dismissed: { 
+                class: 'bg-red-100 text-red-800 border-red-200', 
+                text: 'Уволен',
+                icon: AlertCircle
+            },
+            vacation: { 
+                class: 'bg-blue-100 text-blue-800 border-blue-200', 
+                text: 'В отпуске',
+                icon: Calendar
+            },
+            sick_leave: { 
+                class: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
+                text: 'На больничном',
+                icon: AlertCircle
+            }
+        };
         
-        <div className="px-6 py-5 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Имя пользователя */}
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <User className="h-6 w-6 text-gray-400" />
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Имя пользователя
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white font-mono">
-                  {user.username}
-                </dd>
-              </div>
-            </div>
-
-            {/* Email - удалено из проекта */}
-
-            {/* Дата создания */}
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <Calendar className="h-6 w-6 text-gray-400" />
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Дата регистрации
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {formatDate(user.createdAt)}
-                </dd>
-              </div>
-            </div>
-
-            {/* Последний вход */}
-            <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
-                <Calendar className="h-6 w-6 text-gray-400" />
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Последний вход
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {formatDate(user.lastLogin)}
-                </dd>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Роли и права */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Роли и права доступа
-          </h3>
-        </div>
+        const badge = badges[status] || badges.active;
+        const IconComponent = badge.icon;
         
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Текущая роль */}
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                Текущая роль
-              </dt>
-              <dd>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.effectiveRole)}`}>
-                  <Shield className="w-3 h-3 mr-1" />
-                  {user.effectiveRole}
-                </span>
-              </dd>
+        return (
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${badge.class}`}>
+                <IconComponent className="h-4 w-4 mr-2" />
+                {badge.text}
+            </div>
+        );
+    };
+
+    const getRoleBadge = (role) => {
+        const badges = {
+            admin: { class: 'bg-purple-100 text-purple-800 border-purple-200', text: 'Администратор' },
+            editor: { class: 'bg-orange-100 text-orange-800 border-orange-200', text: 'Редактор' },
+            user: { class: 'bg-gray-100 text-gray-800 border-gray-200', text: 'Пользователь' }
+        };
+        
+        const badge = badges[role] || badges.user;
+        return (
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${badge.class}`}>
+                {badge.text}
+            </div>
+        );
+    };
+
+    if (!user) {
+        return (
+            <div className="text-center py-8">
+                <p className="text-gray-500">Загрузка профиля...</p>
+            </div>
+        );
+    }
+
+    const profile = user.profile || {};
+    const fullName = `${profile.lastName || ''} ${profile.firstName || ''} ${profile.middleName || ''}`.trim();
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-6">
+            {/* Заголовок */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">Мой профиль</h2>
+                {!isEditing ? (
+                    <button
+                        onClick={handleEditStart}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Редактировать
+                    </button>
+                ) : (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleEditSave}
+                            disabled={updateProfileMutation.isLoading}
+                            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                            <Save className="h-4 w-4 mr-2" />
+                            {updateProfileMutation.isLoading ? 'Сохранение...' : 'Сохранить'}
+                        </button>
+                        <button
+                            onClick={handleEditCancel}
+                            className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                        >
+                            <X className="h-4 w-4 mr-2" />
+                            Отмена
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Статус аккаунта */}
-            <div>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                Статус аккаунта
-              </dt>
-              <dd>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                  {user.status === 'active' ? (
-                    <User className="w-3 h-3 mr-1" />
-                  ) : (
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                  )}
-                  {user.status === 'active' ? 'Активен' : 'Заблокирован'}
-                </span>
-              </dd>
-            </div>
+            {/* Основная информация */}
+            <div className="bg-white rounded-lg border p-6">
+                <div className="flex items-start space-x-6">
+                    {/* Аватар */}
+                    <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-2xl">
+                            {fullName ? fullName.split(' ').map(n => n[0]).join('').toUpperCase() : user.username[0].toUpperCase()}
+                        </span>
+                    </div>
 
-            {/* Оригинальная роль (если заблокирован) */}
-            {user.status === 'banned' && user.originalRole && (
-              <div className="md:col-span-2">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  Оригинальная роль
-                </dt>
-                <dd>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(user.originalRole)}`}>
-                    <Shield className="w-3 h-3 mr-1" />
-                    {user.originalRole}
-                  </span>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Роль будет восстановлена после разблокировки
-                  </p>
-                </dd>
-              </div>
-            )}
-          </div>
+                    {/* Основные данные */}
+                    <div className="flex-1">
+                        <div className="flex items-center space-x-4 mb-4">
+                            <h3 className="text-2xl font-bold text-gray-900">
+                                {fullName || user.username}
+                            </h3>
+                            {getRoleBadge(user.role)}
+                            {getStatusBadge(profile.employeeStatus || 'active')}
+                        </div>
 
-          {/* Предупреждение о блокировке */}
-          {user.status === 'banned' && (
-            <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-start">
-                <AlertTriangle className="h-5 w-5 text-red-400 mr-3 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
-                    Аккаунт заблокирован
-                  </h4>
-                  <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                    Ваш аккаунт временно заблокирован. Доступ ограничен до гостевого уровня.
-                    {user.bannedAt && (
-                      <span className="block mt-1">
-                        Дата блокировки: {formatDate(user.bannedAt)}
-                      </span>
-                    )}
-                  </p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-center text-gray-600">
+                                <User className="h-4 w-4 mr-2" />
+                                <span>Логин: {user.username}</span>
+                            </div>
+                            
+                            <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>ID: {user.id}</span>
+                            </div>
+
+                            {profile.department && (
+                                <div className="flex items-center text-gray-600">
+                                    <Building className="h-4 w-4 mr-2" />
+                                    <span>{profile.department}</span>
+                                </div>
+                            )}
+
+                            {profile.section && (
+                                <div className="flex items-center text-gray-600">
+                                    <MapPin className="h-4 w-4 mr-2" />
+                                    <span>{profile.section}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Дополнительная информация */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-          О ролях пользователей
-        </h4>
-        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-          <li><strong>Гость:</strong> Базовый доступ к публичным разделам</li>
-          <li><strong>Пользователь:</strong> Доступ к пользовательским сервисам</li>
-          <li><strong>Редактор:</strong> Управление контентом и документами</li>
-          <li><strong>Администратор:</strong> Полный доступ к системе</li>
-        </ul>
-      </div>
-    </div>
-  );
-} 
+            {/* Детальная информация */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Личные данные */}
+                <div className="bg-white rounded-lg border p-6">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Личные данные</h4>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Фамилия
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.lastName || ''}
+                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.lastName || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Имя
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.firstName || ''}
+                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.firstName || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Отчество
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.middleName || ''}
+                                    onChange={(e) => handleInputChange('middleName', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.middleName || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Год рождения
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="number"
+                                    min="1900"
+                                    max="2010"
+                                    value={editedProfile.birthYear || ''}
+                                    onChange={(e) => handleInputChange('birthYear', e.target.value ? parseInt(e.target.value) : null)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.birthYear || 'Не указано'}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Рабочая информация */}
+                <div className="bg-white rounded-lg border p-6">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4">Рабочая информация</h4>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Отдел
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.department || ''}
+                                    onChange={(e) => handleInputChange('department', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.department || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Участок
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.section || ''}
+                                    onChange={(e) => handleInputChange('section', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.section || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Должность
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editedProfile.position || ''}
+                                    onChange={(e) => handleInputChange('position', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{profile.position || 'Не указано'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Дата трудоустройства
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="date"
+                                    value={editedProfile.employmentDate || ''}
+                                    onChange={(e) => handleInputChange('employmentDate', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            ) : (
+                                <p className="text-gray-900">{formatDate(profile.employmentDate)}</p>
+                            )}
+                        </div>
+
+                        {profile.dismissalDate && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Дата увольнения
+                                </label>
+                                <p className="text-gray-900">{formatDate(profile.dismissalDate)}</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Системная информация */}
+            <div className="bg-white rounded-lg border p-6">
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Системная информация</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Дата регистрации
+                        </label>
+                        <p className="text-gray-900">{formatDate(user.createdAt)}</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Последний вход
+                        </label>
+                        <p className="text-gray-900">
+                            {user.lastLogin ? formatDate(user.lastLogin) : 'Первый вход'}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Статус аккаунта
+                        </label>
+                        <p className="text-gray-900">{user.status === 'active' ? 'Активен' : 'Заблокирован'}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Предупреждения */}
+            {user.warning && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+                        <p className="text-yellow-800">{user.warning}</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default Profile; 

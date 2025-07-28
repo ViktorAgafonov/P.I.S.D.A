@@ -1,432 +1,326 @@
-const UserModel = require('./models/user');
-const { generateToken } = require('./middleware');
-const fs = require('fs-extra');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('./models/user');
+const fs = require('fs');
 const path = require('path');
 
-// Путь к конфигурации инструментов
-const toolsConfigPath = path.join(__dirname, '..', 'tools-config.json');
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-// Загрузка конфигурации инструментов
-const loadToolsConfig = async () => {
-  try {
-    if (await fs.pathExists(toolsConfigPath)) {
-      return await fs.readJson(toolsConfigPath);
+// Загрузка конфигурации инструментов для проверки доступа к auth
+const loadToolsConfig = () => {
+    try {
+        const configPath = path.join(__dirname, '../tools-config.json');
+        const configData = fs.readFileSync(configPath, 'utf8');
+        return JSON.parse(configData);
+    } catch (error) {
+        console.error('Error loading tools config:', error);
+        return { tools: {} };
     }
-    return { tools: {}, defaultPermissions: {} };
-  } catch (error) {
-    console.error('Ошибка загрузки конфигурации инструментов:', error);
-    return { tools: {}, defaultPermissions: {} };
-  }
 };
 
 // Проверка доступа к инструменту авторизации
-const checkAuthToolAccess = async (userRole = 'guest') => {
-  try {
-    // Администраторы всегда имеют доступ к инструменту авторизации
-    if (userRole === 'admin') {
-      return { allowed: true };
+const checkAuthToolAccess = (userRole) => {
+    const config = loadToolsConfig();
+    const authTool = config.tools?.auth;
+    
+    if (!authTool) return { allowed: false, reason: 'Конфигурация auth не найдена' };
+    if (!authTool.active) return { allowed: false, reason: 'Инструмент авторизации отключен администратором' };
+    
+    const permissions = authTool.permissions || [];
+    if (!permissions.includes(userRole)) {
+        return { 
+            allowed: false, 
+            reason: 'Инструмент авторизации отключен администратором для вашей роли'
+        };
     }
-
-    const toolsConfig = await loadToolsConfig();
-    const authTool = toolsConfig.tools?.auth;
-
-    // Если инструмент авторизации не настроен, разрешаем доступ
-    if (!authTool) {
-      return { allowed: true };
-    }
-
-    // Проверяем, активен ли инструмент
-    if (authTool.active === false) {
-      return { 
-        allowed: false, 
-        error: 'Инструмент авторизации отключен администратором',
-        tool: 'auth',
-        status: 'disabled'
-      };
-    }
-
-    // Проверяем, есть ли у роли пользователя доступ к инструменту
-    if (authTool.permissions && !authTool.permissions.includes(userRole)) {
-      return { 
-        allowed: false, 
-        error: 'Доступ к инструменту авторизации запрещен для вашей роли',
-        tool: 'auth',
-        role: userRole
-      };
-    }
-
+    
     return { allowed: true };
-  } catch (error) {
-    console.error('Ошибка проверки доступа к инструменту авторизации:', error);
-    // В случае ошибки разрешаем доступ для безопасности
-    return { allowed: true };
-  }
 };
 
 class AuthController {
-  // Вход в систему
-  async login(req, res) {
-    try {
-      const { username, password } = req.body;
+    // Логин пользователя
+    async login(req, res) {
+        try {
+            const { username, password } = req.body;
 
-      if (!username || !password) {
-        return res.status(400).json({ 
-          error: 'Требуются имя пользователя и пароль' 
-        });
-      }
+            if (!username || !password) {
+                return res.status(400).json({ 
+                    error: 'Имя пользователя и пароль обязательны' 
+                });
+            }
 
-      // Поиск пользователя
-      const user = await UserModel.findByUsername(username);
-      if (!user) {
-        return res.status(401).json({ 
-          error: 'Неверное имя пользователя или пароль' 
-        });
-      }
+            // Находим пользователя
+            const user = await User.findByUsername(username);
+            if (!user) {
+                return res.status(401).json({ 
+                    error: 'Неверное имя пользователя или пароль' 
+                });
+            }
 
-      // Проверка пароля
-      const isValidPassword = await UserModel.validatePassword(user, password);
-      if (!isValidPassword) {
-        return res.status(401).json({ 
-          error: 'Неверное имя пользователя или пароль' 
-        });
-      }
+            // Проверяем пароль
+            const isValidPassword = await bcrypt.compare(password, user.password);
+            if (!isValidPassword) {
+                return res.status(401).json({ 
+                    error: 'Неверное имя пользователя или пароль' 
+                });
+            }
 
-      // Получаем эффективную роль
-      const effectiveRole = UserModel.getEffectiveRole(user);
+            // Проверяем статус сотрудника
+            const employeeCheck = await User.checkEmployeeStatus(user);
+            if (!employeeCheck.allowed) {
+                return res.status(403).json({ 
+                    error: employeeCheck.reason,
+                    authDisabled: true
+                });
+            }
 
-      // Проверяем доступ к инструменту авторизации
-      const accessCheck = await checkAuthToolAccess(effectiveRole);
-      if (!accessCheck.allowed) {
-        return res.status(403).json(accessCheck);
-      }
+            // Проверяем доступ к инструменту авторизации
+            const authAccess = checkAuthToolAccess(user.role);
+            if (!authAccess.allowed) {
+                return res.status(403).json({ 
+                    error: authAccess.reason,
+                    authDisabled: true
+                });
+            }
 
-      // Обновляем время последнего входа
-      await UserModel.updateLastLogin(user.id);
+            // Обновляем время последнего входа
+            await User.updateLastLogin(user.id);
 
-      // Генерируем токен
-      const token = generateToken(user);
+            // Создаем JWT токен
+            const token = jwt.sign(
+                { 
+                    userId: user.id, 
+                    username: user.username, 
+                    role: user.role 
+                },
+                JWT_SECRET,
+                { expiresIn: JWT_EXPIRES_IN }
+            );
 
-      res.json({
-        message: 'Успешный вход в систему',
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          effectiveRole,
-          status: user.status,
-          createdAt: user.createdAt,
-          lastLogin: new Date().toISOString()
+            // Возвращаем данные пользователя без пароля
+            const { password: _, ...userResponse } = user;
+            
+            res.json({
+                token,
+                user: {
+                    ...userResponse,
+                    warning: employeeCheck.warning || null
+                }
+            });
+
+        } catch (error) {
+            console.error('Login error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка входа:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Регистрация нового пользователя
-  async register(req, res) {
-    try {
-      const { username, password, role = 'user' } = req.body;
+    // Регистрация нового пользователя
+    async register(req, res) {
+        try {
+            const { username, password, role, profile } = req.body;
 
-      console.log('🔍 Регистрация пользователя:', { username, role, hasUser: !!req.user, userRole: req.user?.effectiveRole });
+            if (!username || !password) {
+                return res.status(400).json({ 
+                    error: 'Имя пользователя и пароль обязательны' 
+                });
+            }
 
-      // Валидация данных
-      if (!username || !password) {
-        return res.status(400).json({ 
-          error: 'Требуются имя пользователя и пароль' 
-        });
-      }
+            // Проверяем права на создание пользователей (только admin может создавать)
+            if (req.user && req.user.role !== 'admin') {
+                return res.status(403).json({ 
+                    error: 'Недостаточно прав для создания пользователей' 
+                });
+            }
 
-      if (password.length < 6) {
-        return res.status(400).json({ 
-          error: 'Пароль должен содержать минимум 6 символов' 
-        });
-      }
+            // Проверяем доступ к инструменту авторизации
+            const authAccess = checkAuthToolAccess(role || 'user');
+            if (!authAccess.allowed) {
+                return res.status(403).json({ 
+                    error: authAccess.reason,
+                    authDisabled: true
+                });
+            }
 
-      // Проверка роли (только админ может создавать пользователей с высокими ролями)
-      const allowedRoles = ['user'];
-      const currentUserRole = req.user?.effectiveRole || 'guest';
-      
-      if (currentUserRole === 'admin') {
-        allowedRoles.push('editor', 'admin');
-      }
+            // Создаем пользователя
+            const newUser = await User.createUser({
+                username,
+                password,
+                role: role || 'user',
+                profile: profile || {}
+            });
 
-      console.log('🔍 Проверка ролей:', { 
-        requestedRole: role, 
-        allowedRoles, 
-        currentUserRole,
-        hasUser: !!req.user,
-        userData: req.user ? { id: req.user.id, username: req.user.username, role: req.user.role, effectiveRole: req.user.effectiveRole } : null
-      });
+            // Возвращаем данные без пароля
+            const { password: _, ...userResponse } = newUser;
+            
+            res.status(201).json({
+                message: 'Пользователь успешно создан',
+                user: userResponse
+            });
 
-      if (!allowedRoles.includes(role)) {
-        console.log('❌ Отказано в создании пользователя с ролью:', role);
-        return res.status(403).json({ 
-          error: 'Недостаточно прав для создания пользователя с такой ролью. Доступные роли: ' + allowedRoles.join(', ') 
-        });
-      }
-
-      // Проверяем доступ к инструменту авторизации для создаваемой роли
-      const accessCheck = await checkAuthToolAccess(role);
-      if (!accessCheck.allowed) {
-        return res.status(403).json({
-          error: 'Нельзя создать пользователя с ролью, для которой отключен доступ к авторизации',
-          ...accessCheck
-        });
-      }
-
-      // Создание пользователя
-      const newUser = await UserModel.createUser({
-        username,
-        password,
-        role
-      });
-
-      res.status(201).json({
-        message: 'Пользователь успешно создан',
-        user: newUser
-      });
-
-    } catch (error) {
-      console.error('Ошибка регистрации:', error);
-      if (error.message.includes('уже существует')) {
-        return res.status(409).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
-    }
-  }
-
-  // Получение профиля текущего пользователя
-  async getProfile(req, res) {
-    try {
-      if (!req.user || req.user.role === 'guest') {
-        return res.status(401).json({ error: 'Требуется аутентификация' });
-      }
-
-      const { password, ...userProfile } = req.user;
-      
-      res.json({
-        user: {
-          ...userProfile,
-          effectiveRole: UserModel.getEffectiveRole(req.user)
+        } catch (error) {
+            console.error('Registration error:', error);
+            if (error.message.includes('уже существует')) {
+                return res.status(409).json({ error: error.message });
+            }
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка получения профиля:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Получение списка всех пользователей (только для админов)
-  async getUsers(req, res) {
-    try {
-      const users = await UserModel.getAllUsers();
-      
-      // Убираем пароли из ответа
-      const safeUsers = users.map(user => {
-        const { password, ...safeUser } = user;
-        return {
-          ...safeUser,
-          effectiveRole: UserModel.getEffectiveRole(user)
-        };
-      });
+    // Проверка токена
+    async verifyToken(req, res) {
+        try {
+            const user = await User.findById(req.user.userId);
+            if (!user) {
+                return res.status(404).json({ error: 'Пользователь не найден' });
+            }
 
-      res.json({ users: safeUsers });
+            // Проверяем статус сотрудника
+            const employeeCheck = await User.checkEmployeeStatus(user);
+            if (!employeeCheck.allowed) {
+                return res.status(403).json({ 
+                    error: employeeCheck.reason,
+                    authDisabled: true
+                });
+            }
 
-    } catch (error) {
-      console.error('Ошибка получения пользователей:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
-    }
-  }
+            // Проверяем доступ к инструменту авторизации
+            const authAccess = checkAuthToolAccess(user.role);
+            if (!authAccess.allowed) {
+                return res.status(403).json({ 
+                    error: authAccess.reason,
+                    authDisabled: true
+                });
+            }
 
-  // Обновление пользователя
-  async updateUser(req, res) {
-    try {
-      const { userId } = req.params;
-      const updates = req.body;
+            const { password: _, ...userResponse } = user;
+            
+            res.json({
+                user: {
+                    ...userResponse,
+                    warning: employeeCheck.warning || null
+                }
+            });
 
-      // Запрещаем изменение системных полей
-      delete updates.id;
-      delete updates.createdAt;
-      delete updates.lastLogin;
-
-      const updatedUser = await UserModel.updateUser(userId, updates);
-
-      res.json({
-        message: 'Пользователь успешно обновлен',
-        user: {
-          ...updatedUser,
-          effectiveRole: UserModel.getEffectiveRole(updatedUser)
+        } catch (error) {
+            console.error('Token verification error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка обновления пользователя:', error);
-      if (error.message.includes('не найден')) {
-        return res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Блокировка пользователя
-  async banUser(req, res) {
-    try {
-      const { userId } = req.params;
+    // Получение профиля текущего пользователя
+    async getProfile(req, res) {
+        try {
+            const user = await User.findById(req.user.userId);
+            if (!user) {
+                return res.status(404).json({ error: 'Пользователь не найден' });
+            }
 
-      // Нельзя заблокировать самого себя
-      if (req.user.id === userId) {
-        return res.status(400).json({ 
-          error: 'Нельзя заблокировать самого себя' 
-        });
-      }
+            const { password: _, ...userResponse } = user;
+            res.json({ user: userResponse });
 
-      const bannedUser = await UserModel.banUser(userId);
-
-      res.json({
-        message: 'Пользователь заблокирован',
-        user: {
-          ...bannedUser,
-          effectiveRole: UserModel.getEffectiveRole(bannedUser)
+        } catch (error) {
+            console.error('Get profile error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка блокировки пользователя:', error);
-      if (error.message.includes('не найден')) {
-        return res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Разблокировка пользователя
-  async unbanUser(req, res) {
-    try {
-      const { userId } = req.params;
+    // Обновление профиля
+    async updateProfile(req, res) {
+        try {
+            const { profile } = req.body;
+            const userId = req.user.userId;
 
-      const unbannedUser = await UserModel.unbanUser(userId);
+            const updatedUser = await User.updateUser(userId, { profile });
+            const { password: _, ...userResponse } = updatedUser;
 
-      res.json({
-        message: 'Пользователь разблокирован',
-        user: {
-          ...unbannedUser,
-          effectiveRole: UserModel.getEffectiveRole(unbannedUser)
+            res.json({
+                message: 'Профиль успешно обновлен',
+                user: userResponse
+            });
+
+        } catch (error) {
+            console.error('Update profile error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка разблокировки пользователя:', error);
-      if (error.message.includes('не найден')) {
-        return res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Удаление пользователя
-  async deleteUser(req, res) {
-    try {
-      const { userId } = req.params;
+    // Получение списка пользователей (только для админа)
+    async getUsers(req, res) {
+        try {
+            const users = await User.loadUsers();
+            
+            // Убираем пароли из ответа
+            const usersResponse = users.map(user => {
+                const { password: _, ...userWithoutPassword } = user;
+                return userWithoutPassword;
+            });
 
-      // Нельзя удалить самого себя
-      if (req.user.id === userId) {
-        return res.status(400).json({ 
-          error: 'Нельзя удалить самого себя' 
-        });
-      }
+            res.json({ users: usersResponse });
 
-      // Проверяем, что пользователь существует
-      const userToDelete = await UserModel.findById(userId);
-      if (!userToDelete) {
-        return res.status(404).json({ 
-          error: 'Пользователь не найден' 
-        });
-      }
-
-      // Удаляем пользователя
-      await UserModel.deleteUser(userId);
-
-      res.json({
-        message: 'Пользователь успешно удален'
-      });
-
-    } catch (error) {
-      console.error('Ошибка удаления пользователя:', error);
-      if (error.message.includes('не найден')) {
-        return res.status(404).json({ error: error.message });
-      }
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
-    }
-  }
-
-  // Получение информации о ролях
-  async getRoles(req, res) {
-    try {
-      const roles = {
-        guest: {
-          name: 'guest',
-          title: 'Гость',
-          description: 'Базовый доступ к публичным инструментам',
-          level: 0
-        },
-        user: {
-          name: 'user',
-          title: 'Пользователь',
-          description: 'Доступ к пользовательским сервисам',
-          level: 1
-        },
-        editor: {
-          name: 'editor',
-          title: 'Редактор',
-          description: 'Управление контентом и документами',
-          level: 2
-        },
-        admin: {
-          name: 'admin',
-          title: 'Администратор',
-          description: 'Полный доступ к системе',
-          level: 3
+        } catch (error) {
+            console.error('Get users error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      };
-
-      res.json({ roles });
-
-    } catch (error) {
-      console.error('Ошибка получения ролей:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
 
-  // Проверка токена
-  async verifyToken(req, res) {
-    try {
-      if (!req.user || req.user.role === 'guest') {
-        return res.status(401).json({ valid: false });
-      }
+    // Обновление пользователя (только для админа)
+    async updateUser(req, res) {
+        try {
+            const { userId } = req.params;
+            const updateData = req.body;
 
-      res.json({ 
-        valid: true,
-        user: {
-          id: req.user.id,
-          username: req.user.username,
-          role: req.user.role,
-          effectiveRole: req.user.effectiveRole,
-          status: req.user.status,
-          createdAt: req.user.createdAt,
-          lastLogin: req.user.lastLogin
+            const updatedUser = await User.updateUser(parseInt(userId), updateData);
+            const { password: _, ...userResponse } = updatedUser;
+
+            res.json({
+                message: 'Пользователь успешно обновлен',
+                user: userResponse
+            });
+
+        } catch (error) {
+            console.error('Update user error:', error);
+            if (error.message.includes('не найден')) {
+                return res.status(404).json({ error: error.message });
+            }
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
         }
-      });
-
-    } catch (error) {
-      console.error('Ошибка проверки токена:', error);
-      res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
-  }
+
+    // Удаление пользователя (только для админа)
+    async deleteUser(req, res) {
+        try {
+            const { userId } = req.params;
+
+            await User.deleteUser(parseInt(userId));
+
+            res.json({ message: 'Пользователь успешно удален' });
+
+        } catch (error) {
+            console.error('Delete user error:', error);
+            if (error.message.includes('не найден') || error.message.includes('администратора')) {
+                return res.status(400).json({ error: error.message });
+            }
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        }
+    }
+
+    // Создание учетной записи из данных сотрудника
+    async createUserFromEmployee(req, res) {
+        try {
+            const { employeeId, username, password, role } = req.body;
+
+            // Здесь будет интеграция с модулем сотрудников
+            // Пока создаем заглушку
+            res.status(501).json({ 
+                error: 'Функция будет реализована после создания модуля сотрудников' 
+            });
+
+        } catch (error) {
+            console.error('Create user from employee error:', error);
+            res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+        }
+    }
 }
 
 module.exports = new AuthController(); 

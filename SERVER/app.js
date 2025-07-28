@@ -233,7 +233,7 @@ app.post('/api/tools/manage', authenticateToken, async (req, res) => {
     if (tools && tools.auth && tools.auth.active === false) {
       return res.status(400).json({ error: 'Инструмент авторизации нельзя отключить.' });
     }
-
+    
     // Обновляем конфигурацию
     if (tools) {
       toolsConfig.tools = { ...toolsConfig.tools, ...tools };

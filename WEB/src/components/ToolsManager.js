@@ -286,12 +286,12 @@ export function ToolsManager() {
                   }
                   
                   return (
-                    <th key={role} scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      <div className="flex items-center justify-center space-x-1">
-                        {React.createElement(roleIcons[role], { className: "w-4 h-4" })}
-                        <span>{roleLabels[role]}</span>
-                      </div>
-                    </th>
+                  <th key={role} scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <div className="flex items-center justify-center space-x-1">
+                      {React.createElement(roleIcons[role], { className: "w-4 h-4" })}
+                      <span>{roleLabels[role]}</span>
+                    </div>
+                  </th>
                   );
                 })}
               </tr>
